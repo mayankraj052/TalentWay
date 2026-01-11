@@ -23,10 +23,13 @@ const StreamVideoProvider = ({ children }: { children: ReactNode }) => {
       },
       tokenProvider: streamTokenProvider,
     });
+
+    setStreamVideoClient(client);
   }, [user, isLoaded]);
 
   if (!streamVideoClient) return <LoaderUi />;
 
   return <StreamVideo client={streamVideoClient}>{children}</StreamVideo>;
 };
+
 export default StreamVideoProvider;
