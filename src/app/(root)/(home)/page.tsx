@@ -8,6 +8,7 @@ import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { useRouter } from "next/navigation";
 import MeetingModal from "@/components/MeetingModal";
+import LoaderUi from "@/components/LoaderUi";
 
 export default function Home() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function Home() {
     }
   };
 
-  if (isLoading) return <p>loading...</p>;
+  if (isLoading) return <LoaderUi />;
 
   return (
     <div className="container max-w-7xl mx-auto p-6">
@@ -64,7 +65,7 @@ export default function Home() {
             isOpen={showModel}
             onClose={() => setShowModel(false)}
             title={modalType === "join" ? "Join Meeting" : "Start Meeting"}
-            isJoinMeeting={modalType==="join"}
+            isJoinMeeting={modalType === "join"}
           />
         </>
       ) : (
