@@ -1,9 +1,16 @@
-import React from 'react'
+"use client";
+import LoaderUi from "@/components/LoaderUi";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useRouter } from "next/navigation";
+import InterviewScheduleUI from "./InterviewScheduleUI";
 
-const page = () => {
-  return (
-    <div>page</div>
-  )
-}
+const SchedulePage = () => {
+  const router = useRouter();
+  const { isInterviewer, isLoading } = useUserRole();
 
-export default page
+  if (isLoading) return <LoaderUi />;
+  if (!isInterviewer) return router.push("/");
+  return <InterviewScheduleUI />;
+};
+
+export default SchedulePage;
