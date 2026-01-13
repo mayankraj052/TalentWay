@@ -44,10 +44,86 @@ const InterviewScheduleUI = () => {
     title: "",
     description: "",
     date: new Date(),
-    time: "09:00",
+    time: "09:00 AM",
     candidateId: "",
     interviewerIds: user?.id ? [user.id] : [],
   });
+
+  const isDateDisabled = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    return selectedDate < today;
+  };
+
+  const convertTo24Hour = (time12h: string): string => {
+    const [time, period] = time12h.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+
+    if (period === "PM" && hours !== 12) {
+      hours += 12;
+    } else if (period === "AM" && hours === 12) {
+      hours = 0;
+    }
+
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  };
+
+  const getAvailableTimeSlots = () => {
+    return TIME_SLOTS;
+  };
+
+  const handleTimeSelect = (selectedTime: string) => {
+    // Check if selected time is valid for today
+    const selectedDate = new Date(formData.date);
+    selectedDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isToday = selectedDate.getTime() === today.getTime();
+
+    if (isToday) {
+      const time24h = convertTo24Hour(selectedTime);
+      const [hours, minutes] = time24h.split(":").map(Number);
+      const slotTime = new Date();
+      slotTime.setHours(hours, minutes, 0, 0);
+      const now = new Date();
+
+      if (slotTime <= now) {
+        toast.error("This time slot is not available. Please select a future time.");
+        return;
+      }
+    }
+
+    setFormData({ ...formData, time: selectedTime });
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+
+    setFormData({ ...formData, date });
+
+    // Check if today is selected and no slots available
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isToday = selectedDate.getTime() === today.getTime();
+
+    if (isToday) {
+      const availableSlots = TIME_SLOTS.filter((slot) => {
+        const time24h = convertTo24Hour(slot);
+        const [hours, minutes] = time24h.split(":").map(Number);
+        const slotTime = new Date();
+        slotTime.setHours(hours, minutes, 0, 0);
+        return slotTime > new Date();
+      });
+
+      if (availableSlots.length === 0) {
+        toast.error("No available slots for today. Please select next day.");
+      }
+    }
+  };
 
   const scheduleMeeting = async () => {
     if (!client || !user) return;
@@ -55,14 +131,28 @@ const InterviewScheduleUI = () => {
       toast.error("Please select both candidate and  at least one interviewer");
       return;
     }
+
+    // Validate that the selected date and time is in the future
+    const time24h = convertTo24Hour(formData.time);
+    const [hours, minutes] = time24h.split(":").map(Number);
+    const meetingDateTime = new Date(formData.date);
+    meetingDateTime.setHours(hours, minutes, 0, 0);
+    const now = new Date();
+
+    if (meetingDateTime <= now) {
+      toast.error("Please select a future date and time for the meeting");
+      return;
+    }
+
     setIsCreating(true);
 
     try {
       const { title, description, date, time, candidateId, interviewerIds } =
         formData;
-      const [hours, minutes] = time.split(":");
+      const time24h = convertTo24Hour(time);
+      const [hours, minutes] = time24h.split(":").map(Number);
       const meetingDate = new Date(date);
-      meetingDate.setHours(parseInt(hours), parseInt(minutes), 0);
+      meetingDate.setHours(hours, minutes, 0);
 
       const id = crypto.randomUUID();
       const call = client.call("default", id);
@@ -94,7 +184,7 @@ const InterviewScheduleUI = () => {
         title: "",
         description: "",
         date: new Date(),
-        time: "09:00",
+        time: "09:00 AM",
         candidateId: "",
         interviewerIds: user?.id ? [user.id] : [],
       });
@@ -252,10 +342,8 @@ const InterviewScheduleUI = () => {
                   <Calendar
                     mode="single"
                     selected={formData.date}
-                    onSelect={(date) =>
-                      date && setFormData({ ...formData, date })
-                    }
-                    disabled={(date) => date < new Date()}
+                    onSelect={handleDateSelect}
+                    disabled={isDateDisabled}
                     className="rounded-md border"
                   />
                 </div>
@@ -265,13 +353,13 @@ const InterviewScheduleUI = () => {
                   <label className="text-sm font-medium">Time</label>
                   <Select
                     value={formData.time}
-                    onValueChange={(time) => setFormData({ ...formData, time })}
+                    onValueChange={handleTimeSelect}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>
                     <SelectContent>
-                      {TIME_SLOTS.map((time) => (
+                      {getAvailableTimeSlots().map((time) => (
                         <SelectItem key={time} value={time}>
                           {time}
                         </SelectItem>
