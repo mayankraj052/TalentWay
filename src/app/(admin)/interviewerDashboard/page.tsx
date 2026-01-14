@@ -31,16 +31,19 @@ import type { User } from "@/types";
 
 type Interview = Doc<"interviews">;
 
-const dashboardPage = () => {
+const interviewerDashboardPage = () => {
   const { user, isLoaded } = useUser();
   const users = useQuery(api.users.getUsers);
   const interviews = useQuery(api.interviews.getAllInterviews);
   const updateStatus = useMutation(api.interviews.updateInterviewStatus);
 
+  // While auth or user list is loading, show loader (prevents access-denied flash)
+  if (!isLoaded || users === undefined) {
+    return <LoaderUi />;
+  }
+
   // Find current user's role
-  const currentUserRole = users?.find(
-    (u: User) => u.clerkId === user?.id
-  )?.role;
+  const currentUserRole = users.find((u: User) => u.clerkId === user?.id)?.role;
 
   const handleStatusUpdate = async (
     interviewId: Id<"interviews">,
@@ -55,18 +58,11 @@ const dashboardPage = () => {
     }
   };
 
-  // Show loading while authentication is being processed
-  if (!isLoaded) {
-    return <LoaderUi />;
-  }
-
   // Show message if user is not signed in
   if (!user) {
     return (
       <div className="container mx-auto py-10 text-center">
-        <h1 className="text-2xl font-bold text-red-500 mb-4">
-          Access Denied
-        </h1>
+        <h1 className="text-2xl font-bold text-red-500 mb-4">Access Denied</h1>
         <p className="text-muted-foreground mb-6">
           Please sign in to access the dashboard.
         </p>
@@ -81,9 +77,7 @@ const dashboardPage = () => {
   if (currentUserRole !== "interviewer") {
     return (
       <div className="container mx-auto py-10 text-center">
-        <h1 className="text-2xl font-bold text-red-500 mb-4">
-          Access Denied
-        </h1>
+        <h1 className="text-2xl font-bold text-red-500 mb-4">Access Denied</h1>
         <p className="text-muted-foreground mb-6">
           Only interviewers can access the dashboard. Your current role is{" "}
           <span className="font-semibold capitalize">{currentUserRole}</span>.
@@ -211,4 +205,4 @@ const dashboardPage = () => {
   );
 };
 
-export default dashboardPage;
+export default interviewerDashboardPage;
