@@ -3,6 +3,7 @@ import { useStreamVideoClient } from "@stream-io/video-react-sdk";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
+import type { User, Interview } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -29,16 +30,17 @@ import MeetingCard from "@/components/MeetingCard";
 
 const InterviewScheduleUI = () => {
   const client = useStreamVideoClient();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [open, setOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
+  // Query data - will return null while user is not authenticated
   const interviews = useQuery(api.interviews.getAllInterviews) ?? [];
   const users = useQuery(api.users.getUsers) ?? [];
   const createInterview = useMutation(api.interviews.createInterview);
 
-  const candidates = users?.filter((u) => u.role === "candidate");
-  const interviewers = users.filter((u) => u.role === "interviewer");
+  const candidates: User[] = users?.filter((u: User) => u.role === "candidate") ?? [];
+  const interviewers: User[] = users.filter((u: User) => u.role === "interviewer");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -213,199 +215,212 @@ const InterviewScheduleUI = () => {
     }));
   };
 
-  const selectedInterviewer = interviewers.filter((i) =>
+  const selectedInterviewer: User[] = interviewers.filter((i: User) =>
     formData.interviewerIds.includes(i.clerkId)
   );
 
-  const availableInterviewer = interviewers.filter(
-    (i) => !formData.interviewerIds.includes(i.clerkId)
+  const availableInterviewer: User[] = interviewers.filter(
+    (i: User) => !formData.interviewerIds.includes(i.clerkId)
   );
 
   return (
     <div className="container max-w-7xl mx-auto p-6 space-y-8">
-      <div className="flex items-center justify-between">
-        {/* Header info */}
-        <div>
-          <h1 className="text-3xl font-bold">Interviews</h1>
-          <p className="text-muted-foreground mt-1">
-            Schedule and manage interviews
-          </p>
-        </div>
-        {/* Dialog */}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg">Schedule Interviews</Button>
-          </DialogTrigger>
-
-          <DialogContent className="sm:max-w-125 h-[calc(100vh-200px)] overflow-auto">
-            <DialogHeader>
-              <DialogTitle>Schedule Interviews</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              {/* Interview Title */}
-              <div className="space-y-2">
-                <label
-                  className="text-sm font-medium
-                "
-                >
-                  Title
-                </label>
-                <Input
-                  placeholder="Interview Title"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                />
-              </div>
-
-              {/* interviewer description */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
-                <Textarea
-                  placeholder="Interview description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  rows={3}
-                />
-              </div>
-
-              {/* Candidate */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Candidate</label>
-                <Select
-                  value={formData.candidateId}
-                  onValueChange={(candidateId) =>
-                    setFormData({ ...formData, candidateId })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Candidate" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {candidates.map((candidate) => (
-                      <SelectItem
-                        key={candidate.clerkId}
-                        value={candidate.clerkId}
-                      >
-                        <UserInfo user={candidate} />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Interviewers */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Interviewers</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedInterviewer.map((interviewer) => (
-                    <div key={interviewer.clerkId} className="">
-                      <UserInfo user={interviewer} />
-                      {interviewer.clerkId !== user?.id && (
-                        <button
-                          onClick={() => removeInterviewer(interviewer.clerkId)}
-                          className="hover:text-destructive transition-colors"
-                        >
-                          <XIcon className="size-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {availableInterviewer.length > 0 && (
-                  <Select onValueChange={addInterviewer}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Add interviewer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableInterviewer.map((interviewer) => (
-                        <SelectItem
-                          key={interviewer.clerkId}
-                          value={interviewer.clerkId}
-                        >
-                          <UserInfo user={interviewer} />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {/* Date & Time */}
-              <div className="flex gap-4">
-                {/* Calender */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Date</label>
-                  <Calendar
-                    mode="single"
-                    selected={formData.date}
-                    onSelect={handleDateSelect}
-                    disabled={isDateDisabled}
-                    className="rounded-md border"
-                  />
-                </div>
-
-                {/* Time */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Time</label>
-                  <Select
-                    value={formData.time}
-                    onValueChange={handleTimeSelect}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableTimeSlots().map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {/* Action Button */}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={scheduleMeeting} disabled={isCreating}>
-                  {isCreating ? (
-                    <>
-                      <Loader2Icon className="mr-2 size-4 animate-spin" />
-                      Scheduling...
-                    </>
-                  ) : (
-                    "Schedule Interview"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/*Loading State & Meeting Card  */}
-      {!interviews ? (
+      {/* Show loading state while authentication is being processed */}
+      {!isLoaded ? (
         <div className="flex justify-center py-12">
           <Loader2Icon className="size-8 animate-spin text-muted-foreground" />
         </div>
-      ) : interviews.length > 0 ? (
-        <div className="space-4">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {interviews.map((interview) => (
-              <MeetingCard key={interview._id} interview={interview} />
-            ))}
-          </div>
+      ) : !user ? (
+        <div className="text-center py-12 text-muted-foreground">
+          Please sign in to schedule interviews
         </div>
       ) : (
-        <div className="text-center py-12 text-muted-foreground">
-          No interviews schedule
-        </div>
+        <>
+          <div className="flex items-center justify-between">
+            {/* Header info */}
+            <div>
+              <h1 className="text-3xl font-bold">Interviews</h1>
+              <p className="text-muted-foreground mt-1">
+                Schedule and manage interviews
+              </p>
+            </div>
+            {/* Dialog */}
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg">Schedule Interviews</Button>
+              </DialogTrigger>
+
+              <DialogContent className="sm:max-w-125 h-[calc(100vh-200px)] overflow-auto">
+                <DialogHeader>
+                  <DialogTitle>Schedule Interviews</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  {/* Interview Title */}
+                  <div className="space-y-2">
+                    <label
+                      className="text-sm font-medium
+                "
+                    >
+                      Title
+                    </label>
+                    <Input
+                      placeholder="Interview Title"
+                      value={formData.title}
+                      onChange={(e) =>
+                        setFormData({ ...formData, title: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  {/* interviewer description */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Description</label>
+                    <Textarea
+                      placeholder="Interview description"
+                      value={formData.description}
+                      onChange={(e) =>
+                        setFormData({ ...formData, description: e.target.value })
+                      }
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Candidate */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Candidate</label>
+                    <Select
+                      value={formData.candidateId}
+                      onValueChange={(candidateId) =>
+                        setFormData({ ...formData, candidateId })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Candidate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {candidates.map((candidate: User) => (
+                          <SelectItem
+                            key={candidate.clerkId}
+                            value={candidate.clerkId}
+                          >
+                            <UserInfo user={candidate} />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Interviewers */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Interviewers</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {selectedInterviewer.map((interviewer: User) => (
+                        <div key={interviewer.clerkId} className="">
+                          <UserInfo user={interviewer} />
+                          {interviewer.clerkId !== user?.id && (
+                            <button
+                              onClick={() => removeInterviewer(interviewer.clerkId)}
+                              className="hover:text-destructive transition-colors"
+                            >
+                              <XIcon className="size-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {availableInterviewer.length > 0 && (
+                      <Select onValueChange={addInterviewer}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Add interviewer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableInterviewer.map((interviewer: User) => (
+                            <SelectItem
+                              key={interviewer.clerkId}
+                              value={interviewer.clerkId}
+                            >
+                              <UserInfo user={interviewer} />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  {/* Date & Time */}
+                  <div className="flex gap-4">
+                    {/* Calender */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Date</label>
+                      <Calendar
+                        mode="single"
+                        selected={formData.date}
+                        onSelect={handleDateSelect}
+                        disabled={isDateDisabled}
+                        className="rounded-md border"
+                      />
+                    </div>
+
+                    {/* Time */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Time</label>
+                      <Select
+                        value={formData.time}
+                        onValueChange={handleTimeSelect}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAvailableTimeSlots().map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {/* Action Button */}
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button variant="outline" onClick={() => setOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={scheduleMeeting} disabled={isCreating}>
+                      {isCreating ? (
+                        <>
+                          <Loader2Icon className="mr-2 size-4 animate-spin" />
+                          Scheduling...
+                        </>
+                      ) : (
+                        "Schedule Interview"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/*Loading State & Meeting Card  */}
+          {!interviews ? (
+            <div className="flex justify-center py-12">
+              <Loader2Icon className="size-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : interviews.length > 0 ? (
+            <div className="space-4">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {interviews.map((interview: Interview) => (
+                  <MeetingCard key={interview._id} interview={interview} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              No interviews schedule
+            </div>
+          )}
+        </>
       )}
     </div>
   );
