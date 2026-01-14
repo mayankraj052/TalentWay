@@ -60,7 +60,7 @@ const MeetingCard = ({ interview }: { interview: Interview }) => {
 
       <CardContent>
         {status === "live" && (
-          <Button className="w-full" onClick={() => interview.streamCallId}>
+          <Button className="w-full cursor-pointer" onClick={() => joinMeeting(interview.streamCallId)}>
             Join Meeting
           </Button>
         )}

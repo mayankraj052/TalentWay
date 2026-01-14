@@ -1,5 +1,6 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Doc, Id } from "../../../../convex/_generated/dataModel";
@@ -26,13 +27,20 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import CommentDialog from "@/components/CommentDialog";
+import type { User } from "@/types";
 
 type Interview = Doc<"interviews">;
 
 const dashboardPage = () => {
+  const { user, isLoaded } = useUser();
   const users = useQuery(api.users.getUsers);
   const interviews = useQuery(api.interviews.getAllInterviews);
   const updateStatus = useMutation(api.interviews.updateInterviewStatus);
+
+  // Find current user's role
+  const currentUserRole = users?.find(
+    (u: User) => u.clerkId === user?.id
+  )?.role;
 
   const handleStatusUpdate = async (
     interviewId: Id<"interviews">,
@@ -46,6 +54,46 @@ const dashboardPage = () => {
       toast.error("Failed to Update Status");
     }
   };
+
+  // Show loading while authentication is being processed
+  if (!isLoaded) {
+    return <LoaderUi />;
+  }
+
+  // Show message if user is not signed in
+  if (!user) {
+    return (
+      <div className="container mx-auto py-10 text-center">
+        <h1 className="text-2xl font-bold text-red-500 mb-4">
+          Access Denied
+        </h1>
+        <p className="text-muted-foreground mb-6">
+          Please sign in to access the dashboard.
+        </p>
+        <Link href="/">
+          <Button>Go Back Home</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Show message if user is not an interviewer
+  if (currentUserRole !== "interviewer") {
+    return (
+      <div className="container mx-auto py-10 text-center">
+        <h1 className="text-2xl font-bold text-red-500 mb-4">
+          Access Denied
+        </h1>
+        <p className="text-muted-foreground mb-6">
+          Only interviewers can access the dashboard. Your current role is{" "}
+          <span className="font-semibold capitalize">{currentUserRole}</span>.
+        </p>
+        <Link href="/">
+          <Button>Go Back Home</Button>
+        </Link>
+      </div>
+    );
+  }
 
   if (!interviews || !users) return <LoaderUi />;
 
