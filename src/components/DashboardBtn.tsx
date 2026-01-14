@@ -9,10 +9,10 @@ const DashboardBtn = () => {
   const { isCandidate, isLoading } = useUserRole();
   if (isCandidate || isLoading) return null;
   return (
-    <Link href={"/dashboard"}>
+    <Link href={"/interviewerDashboard"}>
       <Button className="gap-2 font-medium" size={"sm"}>
         <SparkleIcon className="size-4" />
-        Dashboard
+        Interviewer Dashboard
       </Button>
     </Link>
   );

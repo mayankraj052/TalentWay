@@ -1,10 +1,17 @@
-import { SignedIn, UserButton } from "@clerk/nextjs";
+"use client";
+
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { CodeIcon } from "lucide-react";
 import Link from "next/link";
 import DashboardBtn from "./DashboardBtn";
 import { ModeToggle } from "./ModeToggle";
+import { Button } from "./ui/button";
+import { usePathname } from "next/navigation";
 
 const Navbar = () => {
+  const pathname = usePathname();
+  const isLandingPage = pathname === "/";
+
   return (
     <nav className="border-b">
       <div className="flex h-16 items-center px-4 container mx-auto">
@@ -26,6 +33,18 @@ const Navbar = () => {
             <UserButton />
           </div>
         </SignedIn>
+        {isLandingPage && (
+          <SignedOut>
+            <div className="flex items-center space-x-4 ml-auto">
+              <ModeToggle />
+              <SignInButton mode="modal">
+                <Button variant="outline" size="sm">
+                  Login
+                </Button>
+              </SignInButton>
+            </div>
+          </SignedOut>
+        )}
       </div>
     </nav>
   );
