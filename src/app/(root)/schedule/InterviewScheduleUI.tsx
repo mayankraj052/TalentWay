@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import type { User, Interview } from "@/types";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -127,6 +128,81 @@ const InterviewScheduleUI = () => {
     }
   };
 
+  const sendInterviewEmails = async ({
+    title,
+    description,
+    meetingDate,
+    streamCallId,
+    candidateId,
+    interviewerIds,
+  }: {
+    title: string;
+    description?: string;
+    meetingDate: Date;
+    streamCallId: string;
+    candidateId: string;
+    interviewerIds: string[];
+  }) => {
+    try {
+      const candidate = users.find((u: User) => u.clerkId === candidateId);
+      const interviewerUsers = users.filter((u: User) =>
+        interviewerIds.includes(u.clerkId)
+      );
+
+      const recipients: { email: string; name: string; role: "interviewer" | "candidate" }[] = [];
+
+      if (candidate) {
+        recipients.push({
+          email: candidate.email,
+          name: candidate.name,
+          role: "candidate",
+        });
+      }
+
+      interviewerUsers.forEach((interviewer: User) => {
+        recipients.push({
+          email: interviewer.email,
+          name: interviewer.name,
+          role: "interviewer",
+        });
+      });
+
+      if (recipients.length === 0) return;
+
+      const dateTime = format(meetingDate, "EEEE, MMMM dd, yyyy 'at' hh:mm a");
+
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          interviewTitle: title,
+          interviewDescription: description,
+          dateTime,
+          streamCallId,
+          recipients,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        if (result.failed > 0) {
+          toast.success(
+            `Email sent to ${result.sent}/${result.total} participants`
+          );
+        } else {
+          toast.success("Notification emails sent to all participants!");
+        }
+      } else {
+        console.error("Email API error:", result.error);
+        toast.error("Interview scheduled, but failed to send notification emails.");
+      }
+    } catch (error) {
+      console.error("Failed to send notification emails:", error);
+      toast.error("Interview scheduled, but failed to send notification emails.");
+    }
+  };
+
   const scheduleMeeting = async () => {
     if (!client || !user) return;
     if (!formData.candidateId || formData.interviewerIds.length === 0) {
@@ -174,6 +250,16 @@ const InterviewScheduleUI = () => {
         description,
         startTime: meetingDate.getTime(),
         status: "upcoming",
+        streamCallId: id,
+        candidateId,
+        interviewerIds,
+      });
+
+      // Send notification emails (non-blocking)
+      sendInterviewEmails({
+        title,
+        description,
+        meetingDate,
         streamCallId: id,
         candidateId,
         interviewerIds,
